@@ -376,23 +376,21 @@ function getSslConfig(
 }
 
 async function getProxyConfig(root: string, proxyConfig: string): Promise<MiddlewareHandler[]> {
-  const proxy = await loadProxyConfiguration(root, proxyConfig, false);
+  const proxy = await loadProxyConfiguration(root, proxyConfig, true);
   const createdProxies = [];
   const { createProxyMiddleware } = await import('http-proxy-middleware');
+  
   for (const [key, context] of Object.entries(proxy)) {
-    if (typeof key === 'string') {
-      createdProxies.push(
-        createProxyMiddleware(
-          key.replace(/^\*$/, '**').replace(/\/\*$/, ''),
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          context as any,
-        ) as MiddlewareHandler,
-      );
-    } else {
-      createdProxies.push(
+    
+    if (key.startsWith('^') && key.endsWith('$')) {      
+      createdProxies.push(createProxyMiddleware(
+        (pathname) => !!pathname.match(key),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        createProxyMiddleware(key, context as any) as MiddlewareHandler,
-      );
+        context as any
+      ) as MiddlewareHandler);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      createdProxies.push(createProxyMiddleware(key, context as any)  as MiddlewareHandler);
     }
   }
 
